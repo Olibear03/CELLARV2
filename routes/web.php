@@ -60,15 +60,7 @@ Route::get('/search', function () {
     return Inertia::render('Search');
 })->middleware(['auth', 'verified'])->name('search');
 
-Route::get('/proficiency', function () {
-    return Inertia::render('Proficiency', [
-        'files' => \App\Models\ArchiveFile::with(['category', 'user'])
-            ->whereHas('category', function($q) { $q->where('name', 'Proficiency'); })
-            ->orderBy('created_at', 'desc')
-            ->get(),
-        'categories' => \App\Models\Category::all()
-    ]);
-})->middleware(['auth', 'verified'])->name('proficiency');
+
 
 Route::get('/documents/{path?}', function (\Illuminate\Http\Request $request, $path = null) {
     // Build breadcrumb chain and resolve current folder from URL path segments.
@@ -335,6 +327,42 @@ Route::post('/security/users', function (\Illuminate\Http\Request $request) {
     return redirect()->back()->with('success', 'Assistant created.');
 })->middleware(['auth', 'verified'])->name('security.users.store');
 
+// Promote an admin_assistant to admin (director only)
+Route::patch('/security/users/{id}/promote', function (\Illuminate\Http\Request $request, $id) {
+    // Only directors can promote
+    if ($request->user()->role !== 'director') {
+        abort(403, 'Only the director can promote users.');
+    }
+
+    $target = \App\Models\User::findOrFail($id);
+
+    // Only assistants can be promoted
+    if ($target->role !== 'admin_assistant') {
+        return redirect()->back()->withErrors(['promote' => 'Only admin assistants can be promoted.']);
+    }
+
+    $target->update(['role' => 'admin']);
+
+    return redirect()->back()->with('success', "{$target->name} has been promoted to Admin.");
+})->middleware(['auth', 'verified'])->name('security.users.promote');
+
+// Demote an admin back to assistant (director only)
+Route::patch('/security/users/{id}/demote', function (\Illuminate\Http\Request $request, $id) {
+    if ($request->user()->role !== 'director') {
+        abort(403, 'Only the director can demote users.');
+    }
+
+    $target = \App\Models\User::findOrFail($id);
+
+    if ($target->role !== 'admin') {
+        return redirect()->back()->withErrors(['demote' => 'Only admins can be demoted.']);
+    }
+
+    $target->update(['role' => 'admin_assistant']);
+
+    return redirect()->back()->with('success', "{$target->name} has been demoted to Assistant.");
+})->middleware(['auth', 'verified'])->name('security.users.demote');
+
 // Reset a user's password to a temporary one
 Route::patch('/security/users/{id}/reset-password', function (\Illuminate\Http\Request $request, $id) {
     $request->validate(['password' => 'required|string|min:8']);
@@ -362,6 +390,11 @@ Route::delete('/security/users/{id}', function ($id) {
     $target->delete();
     return redirect()->back()->with('success', 'Account deleted.');
 })->middleware(['auth', 'verified'])->name('security.users.destroy');
+
+// Temporary — UML Activity Diagram page (remove before production)
+Route::get('/activity-diagram', function () {
+    return Inertia::render('ActivityDiagram');
+})->middleware(['auth', 'verified'])->name('activity-diagram');
 
 Route::post('/categories', [CategoryController::class, 'store'])->middleware(['auth', 'verified'])->name('categories.store');
 

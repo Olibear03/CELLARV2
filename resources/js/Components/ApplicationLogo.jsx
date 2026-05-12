@@ -1,10 +1,10 @@
-export default function ApplicationLogo(props) {
+export default function ApplicationLogo({ className = 'w-40 h-auto', ...props }) {
     return (
-        <img 
-            {...props} 
-            src="/CELLAR_logo.jpg" 
-            alt="Cellar Logo" 
-            className="w-40 h-50" // Adjust size here
+        <img
+            {...props}
+            src="/CELLAR_logo.png"
+            alt="Cellar Logo"
+            className={className}
         />
     );
 }

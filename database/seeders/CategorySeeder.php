@@ -15,7 +15,6 @@ class CategorySeeder extends Seeder
         $categories = [
             ['name' => 'Research', 'description' => 'Research repository documents'],
             ['name' => 'general_doc', 'description' => 'General archive for office memos, reports, and administrative files'],
-            ['name' => 'Proficiency', 'description' => 'Internal performance evaluations and rating periods'],
             ['name' => 'Links', 'description' => 'Important links and resources'],
         ];
 

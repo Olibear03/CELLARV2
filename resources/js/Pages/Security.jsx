@@ -14,6 +14,11 @@ export default function Security({ users = [], logs = [] }) {
     const [resetTarget, setResetTarget]             = useState(null); // user being reset
     const [tempPassword, setTempPassword]           = useState('');
 
+    // Both director and admin can create assistants and manage users
+    const canManageUsers = ['director', 'admin'].includes(authUser.role?.toLowerCase());
+    // Only director can promote / demote
+    const isDirector = authUser.role?.toLowerCase() === 'director';
+
     /* ── Create assistant form ── */
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '', email: '', password: '',
@@ -51,9 +56,24 @@ export default function Security({ users = [], logs = [] }) {
         }
     };
 
+    /* ── Promote assistant → admin (director only) ── */
+    const handlePromote = (userId) => {
+        if (confirm('Promote this assistant to Admin? They will gain user management access.')) {
+            router.patch(route('security.users.promote', userId));
+        }
+    };
+
+    /* ── Demote admin → assistant (director only) ── */
+    const handleDemote = (userId) => {
+        if (confirm('Demote this admin back to Assistant?')) {
+            router.patch(route('security.users.demote', userId));
+        }
+    };
+
     /* ── Role badge color ── */
     const roleBadge = (role) => {
-        if (role?.toLowerCase() === 'director') return 'bg-blue-500 text-white';
+        if (role?.toLowerCase() === 'director')        return 'bg-blue-600 text-white';
+        if (role?.toLowerCase() === 'admin')           return 'bg-purple-500 text-white';
         if (role?.toLowerCase().includes('assistant')) return 'bg-emerald-500 text-white';
         return 'bg-gray-400 text-white';
     };
@@ -72,15 +92,17 @@ export default function Security({ users = [], logs = [] }) {
                         <h1 className="text-[2rem] font-extrabold text-gray-900 tracking-tight leading-none">Security</h1>
                         <p className="text-gray-500 text-sm mt-1">Manage users and view activity logs.</p>
                     </div>
-                    <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white pl-4 pr-5 py-2.5 rounded-full font-semibold transition-colors shadow-sm text-sm"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Create Assistant
-                    </button>
+                    {canManageUsers && (
+                        <button
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white pl-4 pr-5 py-2.5 rounded-full font-semibold transition-colors shadow-sm text-sm"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Create Assistant
+                        </button>
+                    )}
                 </div>
 
                 {/* ── User Management ── */}
@@ -130,8 +152,8 @@ export default function Security({ users = [], logs = [] }) {
                                         {new Date(u.updated_at).toLocaleDateString()}
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        {/* Only show actions for non-director users */}
-                                        {u.role?.toLowerCase() !== 'director' && u.id !== authUser.id && (
+                                        {/* Only show actions for non-director users that aren't yourself */}
+                                        {u.role?.toLowerCase() !== 'director' && u.id !== authUser.id && canManageUsers && (
                                             <Dropdown>
                                                 <Dropdown.Trigger>
                                                     <button className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100">
@@ -142,33 +164,37 @@ export default function Security({ users = [], logs = [] }) {
                                                 </Dropdown.Trigger>
                                                 <Dropdown.Content align="right" width="48">
                                                     {/* Reset Password */}
-                                                    <button
-                                                        onClick={() => handleResetPassword(u.id)}
-                                                        className="flex items-center gap-2.5 w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                                                    >
-                                                        <svg className="w-4 h-4 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                                                        </svg>
+                                                    <button onClick={() => handleResetPassword(u.id)} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                                        <svg className="w-4 h-4 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
                                                         Reset Password
                                                     </button>
 
-                                                    {/* Deactivate / Activate */}
-                                                    <button
-                                                        onClick={() => handleToggleStatus(u.id)}
-                                                        className="flex items-center gap-2.5 w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                                                    >
+                                                    {/* Promote to Admin — director only, only for assistants */}
+                                                    {isDirector && u.role?.toLowerCase() === 'admin_assistant' && (
+                                                        <button onClick={() => handlePromote(u.id)} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                                            <svg className="w-4 h-4 text-purple-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                                                            Promote to Admin
+                                                        </button>
+                                                    )}
+
+                                                    {/* Demote to Assistant — director only, only for admins */}
+                                                    {isDirector && u.role?.toLowerCase() === 'admin' && (
+                                                        <button onClick={() => handleDemote(u.id)} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                                            <svg className="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                                                            Demote to Assistant
+                                                        </button>
+                                                    )}
+
+                                                    {/* Activate / Deactivate */}
+                                                    <button onClick={() => handleToggleStatus(u.id)} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                                                         {u.active === false ? (
                                                             <>
-                                                                <svg className="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                                </svg>
+                                                                <svg className="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                                                 Activate
                                                             </>
                                                         ) : (
                                                             <>
-                                                                <svg className="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                                                                </svg>
+                                                                <svg className="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
                                                                 Deactivate
                                                             </>
                                                         )}
@@ -176,16 +202,13 @@ export default function Security({ users = [], logs = [] }) {
 
                                                     <div className="h-px bg-gray-100 my-1" />
 
-                                                    {/* Delete Account */}
-                                                    <button
-                                                        onClick={() => handleDeleteUser(u.id)}
-                                                        className="flex items-center gap-2.5 w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 transition-colors"
-                                                    >
-                                                        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                        </svg>
-                                                        Delete Account
-                                                    </button>
+                                                    {/* Delete — only director can delete admins; both can delete assistants */}
+                                                    {(isDirector || u.role?.toLowerCase() === 'admin_assistant') && (
+                                                        <button onClick={() => handleDeleteUser(u.id)} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                            Delete Account
+                                                        </button>
+                                                    )}
                                                 </Dropdown.Content>
                                             </Dropdown>
                                         )}

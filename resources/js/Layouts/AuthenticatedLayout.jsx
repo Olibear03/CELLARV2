@@ -21,7 +21,6 @@ import { useState } from 'react';
  *     Security
  *     Users
  *     Logs
- *     Proficiency
  */
 export default function AuthenticatedLayout({ children }) {
     const user = usePage().props.auth.user;
@@ -65,9 +64,7 @@ export default function AuthenticatedLayout({ children }) {
                 <div className="p-4 flex items-center h-16 relative mt-2 px-5">
                     <Link href="/" className="flex items-center gap-3">
                         <div className="bg-green-700 p-2 rounded-xl shrink-0 shadow-sm flex items-center justify-center">
-                            <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                            </svg>
+                            <ApplicationLogo className="w-7 h-7 object-contain drop-shadow-sm" />
                         </div>
                         {isSidebarOpen && (
                             <div className="flex flex-col">
@@ -200,8 +197,8 @@ export default function AuthenticatedLayout({ children }) {
                         >
                             {/* Two-panel layout icon — left panel + right content area */}
                             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <rect x="3" y="3" width="7" height="18" rx="1.5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                <rect x="13" y="3" width="8" height="18" rx="1.5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                <rect x="3" y="3" width="7" height="18" rx="1.5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                <rect x="13" y="3" width="8" height="18" rx="1.5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                         </button>
 
